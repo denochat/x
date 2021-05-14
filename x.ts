@@ -32,11 +32,51 @@ const types: Record<string, string> = {
   ".jsx": "text/javascript",
 };
 
+const denoImportIntellisense = JSON.stringify({
+  version: 1,
+  registries: [
+    {
+      schema: "/:module(\w+)@:version?/:path*",
+      variables: [
+        {
+          key: "module",
+          url: "https://ix.denochat.dev/modules",
+        },
+        {
+          key: "version",
+          url: "https://ix.denochat.dev/versions?module=${module}",
+        },
+        {
+          key: "path",
+          url:
+            "https://ix.denochat.dev/paths?module=${module}&version=${{version}}",
+        },
+      ],
+    },
+    {
+      schema: "/:module(\w+)/:path*",
+      variables: [
+        {
+          key: "module",
+          url: "https://ix.denochat.dev/modules",
+        },
+        {
+          key: "path",
+          url: "https://ix.denochat.dev/paths?module=${module}&latest=yes",
+        },
+      ],
+    },
+  ],
+});
+
 addEventListener("fetch", async (event: FetchEvent) => {
   const { pathname } = new URL(event.request.url);
   if (pathname === "/.well-known/deno-import-intellisense.json") {
     await event.respondWith(
-      new Response("Coming soon!", { status: 501, statusText: "Coming soon!" }),
+      new Response(denoImportIntellisense, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
     );
     return;
   } else {

@@ -18,9 +18,30 @@ async function getRemoteFiles(repo: string, ref: string): Promise<string[]> {
   )).json()).tree.map(({ path }: { path: string }) => path);
 }
 
-localStorage.setItem("hello", "" + Date.now());
+const cache = new Map<string, Map<string, Set<string>>>();
 
-addEventListener(
-  "fetch",
-  (event) => event.respondWith(new Response(localStorage.getItem("hello"))),
-);
+{
+  for (const mod of await getRemoteModules()) {
+    const tags = new Map<string, Set<string>>();
+    for (const tag of await getRemoteTags(mod)) {
+      const files = new Set<string>();
+      for (const file of await getRemoteFiles(mod, tag)) {
+        if (file.endsWith(".ts")) {
+          files.add("/" + file);
+        }
+      }
+      if (files.size > 0) {
+        tags.set(tag, files);
+      }
+    }
+    if (tags.size > 0) {
+      cache.set(mod, tags);
+    }
+  }
+}
+
+addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  console.log(url);
+  event.respondWith(new Response("OK", { status: 200 }));
+});

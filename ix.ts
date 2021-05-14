@@ -1,3 +1,6 @@
+/// <reference path="./d.d.ts" />
+import { HmacSha256 } from "https://deno.land/std@0.96.0/hash/sha256.ts";
+
 async function getRemoteModules(): Promise<string[]> {
   return (await (await fetch("https://api.github.com/orgs/denochat/repos", {
     headers: { accepts: "application/json" },
@@ -40,8 +43,28 @@ const cache = new Map<string, Map<string, Set<string>>>();
   }
 }
 
-addEventListener("fetch", (event) => {
+const hash = (text: string) =>
+  new HmacSha256(Deno.env.get("GITHUB_WEBHOOK_SECRET")!, false, false)
+    .update(text)
+    .hex().toLowerCase();
+
+addEventListener("fetch", async (event) => {
   const url = new URL(event.request.url);
+  if (
+    url.pathname === "/webhook" &&
+    event.request.method.trim().toLowerCase() === "post"
+  ) {
+    try {
+      const body = await event.request.text();
+      console.log(hash(body));
+      console.log(event.request.headers.get("X-Hub-Signature-256"));
+    } catch {
+      await event.respondWith(
+        new Response("Internal server error.", { status: 500 }),
+      );
+      return;
+    }
+  }
   console.log(url);
   event.respondWith(new Response("OK", { status: 200 }));
 });
